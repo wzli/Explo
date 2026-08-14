@@ -14,7 +14,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   fetchConfig, fetchConfigRaw, saveConfig, resetConfig,
   saveSchedule, startRun, stopRun, fetchRunStatus, fetchLogs,
-  fetchCustomPlaylists, deleteCustomPlaylist, savePathTemplate, saveEnrichMetadata,
+  fetchCustomPlaylists, deleteCustomPlaylist, reorderCustomPlaylists, savePathTemplate, saveEnrichMetadata,
   saveReplacePlaylist, saveCleanDownloads,
   fetchPathTemplatePresets, addPathTemplatePreset, deletePathTemplatePreset,
 } from '../lib/api'
@@ -124,6 +124,7 @@ function TracklistSlide({ show, slideKey, children }) {
 
 function CustomPlaylistsSection({
   customPlaylists,
+  onReorder,
   schedules,
   scheduleProps,
   openTracklist,
@@ -136,6 +137,15 @@ function CustomPlaylistsSection({
   setShowImportModal,
   refreshTick = 0,
 }) {
+  const handleMove = (index, direction) => {
+    const newIdx = index + direction
+    if (newIdx < 0 || newIdx >= customPlaylists.length) return
+    const next = [...customPlaylists]
+    const [moved] = next.splice(index, 1)
+    next.splice(newIdx, 0, moved)
+    if (onReorder) onReorder(next)
+  }
+
   return (
     <div className="mt-6">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -170,6 +180,8 @@ function CustomPlaylistsSection({
                 tracklistOpen={openTracklist === cp.id}
                 onTracklistToggle={() => setOpenTracklist(v => v === cp.id ? null : cp.id)}
                 sourceUrl={cp.source_url || undefined}
+                onMoveLeft={i > 0 ? () => handleMove(i, -1) : undefined}
+                onMoveRight={i < customPlaylists.length - 1 ? () => handleMove(i, 1) : undefined}
                 onDelete={(opts) => onDelete(cp.id, opts)}
                 refreshTick={refreshTick}
               />
@@ -398,6 +410,14 @@ function HomeSection() {
       {/* Custom Playlists */}
       <CustomPlaylistsSection
         customPlaylists={customPlaylists}
+        onReorder={async (newList) => {
+          setCustomPlaylists(newList)
+          try {
+            await reorderCustomPlaylists(newList.map(p => p.id))
+          } catch {
+            fetchCustomPlaylists().then(setCustomPlaylists).catch(() => {})
+          }
+        }}
         refreshTick={refreshTick}
         schedules={schedules}
         scheduleProps={scheduleProps}

@@ -318,6 +318,50 @@ func (p *Playlist) HandleDeleteCustomPlaylist(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// HandleReorderCustomPlaylists persists a reordered list of custom playlist IDs.
+func (p *Playlist) HandleReorderCustomPlaylists(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	playlists := loadCustomPlaylists(p.cfg.WebDataDir)
+	if len(playlists) == 0 {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	playlistMap := make(map[string]CustomPlaylist, len(playlists))
+	for _, cp := range playlists {
+		playlistMap[cp.ID] = cp
+	}
+
+	var reordered []CustomPlaylist
+	seen := make(map[string]bool, len(playlists))
+	for _, id := range body.IDs {
+		if cp, ok := playlistMap[id]; ok && !seen[id] {
+			reordered = append(reordered, cp)
+			seen[id] = true
+		}
+	}
+	for _, cp := range playlists {
+		if !seen[cp.ID] {
+			reordered = append(reordered, cp)
+		}
+	}
+
+	if err := saveCustomPlaylists(p.cfg.WebDataDir, reordered); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("custom-playlists: reordered playlists", "count", len(reordered))
+	w.WriteHeader(http.StatusOK)
+}
+
 // handleGetPlaylist serves the tracklist cache written by explo during its last run.
 // Returns an empty track list if no cache exists yet.
 func (p *Playlist) HandleGetPlaylist(w http.ResponseWriter, r *http.Request) {

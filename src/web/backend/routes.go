@@ -79,6 +79,7 @@ func (s *Server) registerPlaylistRoutes() {
 	s.mux.Handle("POST /api/ui/custom-playlists", s.auth(s.customPlaylist.HandleImportCustomPlaylist))
 
 	// ID-specific routes: DELETE /api/ui/custom-playlists/{id} and POST .../{id}/refresh
+	s.mux.Handle("POST /api/ui/custom-playlists/reorder", s.auth(s.customPlaylist.HandleReorderCustomPlaylists))
 	s.mux.Handle("POST /api/ui/custom-playlists/{id}/refresh", s.auth(s.customPlaylist.HandleRefreshCustomPlaylist))
 	s.mux.Handle("DELETE /api/ui/custom-playlists/{id}", s.auth(s.customPlaylist.HandleDeleteCustomPlaylist))
 

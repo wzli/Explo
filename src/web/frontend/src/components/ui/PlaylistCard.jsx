@@ -374,6 +374,8 @@ export function PlaylistCard({
   onDelete,
   replacePlaylist = true,
   onReplaceToggle,
+  onMoveLeft,
+  onMoveRight,
   trackId,
   artworkUrl,
   sourceUrl,
@@ -449,7 +451,7 @@ export function PlaylistCard({
   const [replaceInfoOpen, setReplaceInfoOpen] = useState(false)
   const menuBtnRef = useRef(null)
   const canEdit = !fixedSchedule && !!onToggleEdit
-  const hasMenu = canEdit || !!onDelete || !!sourceUrl || !!onReplaceToggle
+  const hasMenu = canEdit || !!onDelete || !!sourceUrl || !!onReplaceToggle || !!onMoveLeft || !!onMoveRight
 
   useEffect(() => {
     if (!menuOpen) { setConfirmDelete(false); setDeleteTracksChecked(false); return }
@@ -673,6 +675,36 @@ export function PlaylistCard({
               onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
             >
               Edit Schedule
+            </button>
+          )}
+          {onMoveLeft && (
+            <button
+              onClick={e => { e.stopPropagation(); setMenuOpen(false); onMoveLeft() }}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                background: 'none', border: 'none',
+                padding: '8px 14px', fontSize: 13, color: '#c0c0c0',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#1a1a1a' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+            >
+              ← Move Left
+            </button>
+          )}
+          {onMoveRight && (
+            <button
+              onClick={e => { e.stopPropagation(); setMenuOpen(false); onMoveRight() }}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                background: 'none', border: 'none',
+                padding: '8px 14px', fontSize: 13, color: '#c0c0c0',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#1a1a1a' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+            >
+              → Move Right
             </button>
           )}
           {onReplaceToggle && (
