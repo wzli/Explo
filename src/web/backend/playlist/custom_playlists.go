@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"explo/src/discovery"
+	"explo/src/models"
 	"explo/src/util"
-
 )
 
 // CustomPlaylist holds the metadata for a user-imported playlist.
@@ -59,6 +59,58 @@ func MarkCustomPlaylistArtworkUploaded(cfgDir, id string) error {
 		}
 	}
 	return nil
+}
+
+// FetchAndRefreshCustomPlaylist fetches the latest tracklist for a custom playlist from its source,
+// updates the disk cache, and returns the tracks as []*models.Track along with the playlist name.
+// If live fetching fails, it returns an error so caller can fall back to disk cache.
+func FetchAndRefreshCustomPlaylist(dataDir, playlistID string) ([]*models.Track, string, error) {
+	cp := GetCustomPlaylist(dataDir, playlistID)
+	name := playlistID
+	if cp != nil && cp.Name != "" {
+		name = cp.Name
+	}
+
+	if cp != nil && (cp.SourceURL != "" || cp.LBMBID != "") {
+		slog.Info("custom-playlists: fetching live tracklist from source", "id", playlistID, "source", cp.Source)
+		res, err := fetchCustomPlaylistTracks(*cp)
+		if err == nil && len(res.Tracks) > 0 {
+			if res.Name != "" {
+				name = res.Name
+			}
+			writePreliminaryCache(dataDir, playlistID, res.Tracks)
+			go downloadAndCacheCovers(dataDir, playlistID, res.Tracks)
+
+			// Update last_fetched in custom-playlists.json
+			playlists := loadCustomPlaylists(dataDir)
+			for i := range playlists {
+				if playlists[i].ID == playlistID {
+					playlists[i].LastFetched = time.Now().UTC()
+					if res.Name != "" {
+						playlists[i].Name = res.Name
+					}
+					_ = saveCustomPlaylists(dataDir, playlists)
+					break
+				}
+			}
+
+			modelTracks := make([]*models.Track, len(res.Tracks))
+			for i, t := range res.Tracks {
+				modelTracks[i] = &models.Track{
+					Title:      t.Title,
+					CleanTitle: t.Title,
+					Artist:     t.Artist,
+					MainArtist: t.MainArtist,
+					Album:      t.Album,
+				}
+			}
+			return modelTracks, name, nil
+		} else if err != nil {
+			slog.Warn("custom-playlists: live fetch failed, falling back to disk cache", "id", playlistID, "err", err)
+		}
+	}
+
+	return nil, name, fmt.Errorf("no live tracks fetched")
 }
 
 var lbMBIDRe = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)

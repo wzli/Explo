@@ -27,8 +27,14 @@ type Song struct {
 }
 
 // loadCustomTracks reads a custom playlist's track cache and returns them as
-// models.Track slices, bypassing the LB discovery step entirely.
+// loadCustomTracks loads a user-imported custom playlist.
+// It first attempts to fetch the live tracks from the source (Spotify, Apple Music, ListenBrainz)
+// and update the cache. If offline, it falls back to reading the cached tracks on disk.
 func loadCustomTracks(dataDir, playlistID string) ([]*models.Track, string, error) {
+	if liveTracks, name, err := playlist.FetchAndRefreshCustomPlaylist(dataDir, playlistID); err == nil && len(liveTracks) > 0 {
+		return liveTracks, name, nil
+	}
+
 	type cachedTrack struct {
 		Title      string `json:"title"`
 		Artist     string `json:"artist"`

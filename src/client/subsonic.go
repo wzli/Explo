@@ -127,7 +127,11 @@ func (c *Subsonic) AddLibrary() error {
 
 func (c *Subsonic) SearchSongs(tracks []*models.Track) error {
 	for _, track := range tracks {
-		searchQuery := fmt.Sprintf("%s %s", util.CleanSearchTitle(track.CleanTitle), track.MainArtist)
+		trackTitle := track.CleanTitle
+		if trackTitle == "" {
+			trackTitle = track.Title
+		}
+		searchQuery := fmt.Sprintf("%s %s", util.CleanSearchTitle(trackTitle), track.MainArtist)
 		reqParam := fmt.Sprintf("search3?query=%s&f=json", url.QueryEscape(searchQuery))
 
 		body, err := c.subsonicRequest(reqParam)
@@ -163,7 +167,7 @@ func (c *Subsonic) SearchSongs(tracks []*models.Track) error {
 				continue
 			}
 		}
-		normalizedCleanTitle := util.NormalizeTitle(track.CleanTitle)
+		normalizedCleanTitle := util.NormalizeTitle(trackTitle)
 		for _, song := range songs {
 			normalizedSongTitle := util.NormalizeTitle(song.Title)
 
