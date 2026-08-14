@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	cfg "explo/src/config"
 	"explo/src/logging"
@@ -130,7 +131,12 @@ func queryYTMusic(track *models.Track, query string) error {
 }
 
 func (c *Youtube) GetTrack(track *models.Track) error {
-	ctx := context.Background() // ctx for yt-dlp
+	if track.ID == "" {
+		return fmt.Errorf("no YouTube video ID found for track: %s - %s", track.Title, track.Artist)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
 
 	track.File = fmt.Sprintf("%s.%s", getFilename(track.Title, track.Artist), c.Cfg.FileExtension)
 	track.Present = fetchAndSaveVideo(ctx, *c, *track)
@@ -160,6 +166,9 @@ func getTopic(cfg cfg.Youtube, videos Videos, track models.Track) string {
 
 // gets video stream using yt-dlp
 func getVideo(ctx context.Context, c Youtube, videoID string) (*goutubedl.DownloadResult, error) {
+	if videoID == "" {
+		return nil, fmt.Errorf("cannot download video with empty video ID")
+	}
 
 	result, err := goutubedl.New(ctx, videoID, c.gouTubeOpts)
 	if err != nil {
